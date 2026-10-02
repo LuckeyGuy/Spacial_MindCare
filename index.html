@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MindCare — พื้นที่ดูแลสุขภาพจิตและการให้คำปรึกษา</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <!-- 1. Floating Action Button (FAB) วงกลม ฝึกหายใจ ลอยอยู่มุมขวาบน -->
+  <button id="openBreathingFab" class="fab-breathe-circle" title="ฝึกหายใจคลายเครียด" aria-label="ฝึกหายใจคลายเครียด">
+    <span class="fab-circle-icon">🧘</span>
+    <span class="fab-tooltip">ฝึกหายใจ</span>
+  </button>
+
+  <!-- 2. Floating Action Button (Sound Widget) วงกลมลอยอยู่ข้างล่างปุ่มฝึกหายใจ -->
+  <div class="fab-sound-container">
+    <button id="toggleSoundFab" class="fab-sound-circle" title="เสียงธรรมชาติผ่อนคลาย" aria-label="เสียงธรรมชาติผ่อนคลาย">
+      <span class="fab-sound-icon" id="soundIcon">🎧</span>
+      <span class="fab-tooltip">เสียงผ่อนคลาย</span>
+    </button>
+
+    <!-- แผงกระจายตัวเลือกเสียงธรรมชาติ (Sound Control Panel) -->
+    <div id="soundPanel" class="sound-control-panel">
+      <div class="sound-panel-header">
+        <div>
+          <h4>🌿 เสียงบำบัดช่วยผ่อนคลาย</h4>
+          <p>เปิดฟังสร้างสมาธิ คลายกังวล หรือกล่อมนอน</p>
+        </div>
+        <button id="closeSoundPanel" class="sound-close-btn">&times;</button>
+      </div>
+
+      <!-- รายการเสียง 4 บรรยากาศ -->
+      <div class="sound-tracks-list">
+        <!-- 1. ฝนตก -->
+        <div class="sound-track-item" data-sound="rain">
+          <div class="track-info">
+            <span class="track-icon">🌧️</span>
+            <div>
+              <span class="track-name">ฝนตกพรำๆ (Gentle Rain)</span>
+              <span class="track-desc">ช่วยให้จิตใจนิ่ง มีสมาธิ</span>
+            </div>
+          </div>
+          <div class="track-controls">
+            <input type="range" class="volume-slider" min="0" max="1" step="0.05" value="0.7">
+            <button class="track-toggle-btn" data-sound="rain">เปิด</button>
+          </div>
+        </div>
+
+        <!-- 2. คลื่นทะเล -->
+        <div class="sound-track-item" data-sound="ocean">
+          <div class="track-info">
+            <span class="track-icon">🌊</span>
+            <div>
+              <span class="track-name">คลื่นทะเล (Ocean Waves)</span>
+              <span class="track-desc">จังหวะสม่ำเสมอ คลายความกังวล</span>
+            </div>
+          </div>
+          <div class="track-controls">
+            <input type="range" class="volume-slider" min="0" max="1" step="0.05" value="0.7">
+            <button class="track-toggle-btn" data-sound="ocean">เปิด</button>
+          </div>
+        </div>
+
+        <!-- 3. สายลมในป่า -->
+        <div class="sound-track-item" data-sound="forest">
+          <div class="track-info">
+            <span class="track-icon">🍃</span>
+            <div>
+              <span class="track-name">สายลมและใบไม้ (Forest Breeze)</span>
+              <span class="track-desc">โปร่ง โล่ง สบายตา</span>
+            </div>
+          </div>
+          <div class="track-controls">
+            <input type="range" class="volume-slider" min="0" max="1" step="0.05" value="0.7">
+            <button class="track-toggle-btn" data-sound="forest">เปิด</button>
+          </div>
+        </div>
+
+        <!-- 4. เตาผิงอุ่น -->
+        <div class="sound-track-item" data-sound="fire">
+          <div class="track-info">
+            <span class="track-icon">☕</span>
+            <div>
+              <span class="track-name">เตาผิง / กาแฟอุ่น (Cozy Warmth)</span>
+              <span class="track-desc">อบอุ่น ผ่อนคลาย ปลอดภัย</span>
+            </div>
+          </div>
+          <div class="track-controls">
+            <input type="range" class="volume-slider" min="0" max="1" step="0.05" value="0.7">
+            <button class="track-toggle-btn" data-sound="fire">เปิด</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- แถบตั้งเวลาปิดอัตโนมัติ (Sleep Timer) -->
+      <div class="sleep-timer-section">
+        <div class="timer-title">
+          <span>⏱️ ตัวตั้งเวลาปิดเสียงอัตโนมัติ:</span>
+          <span id="timerCountdownText" class="timer-countdown"></span>
+        </div>
+        <div class="timer-btn-group">
+          <button class="timer-btn" data-mins="15">15 นาที</button>
+          <button class="timer-btn" data-mins="30">30 นาที</button>
+          <button class="timer-btn" data-mins="60">60 นาที</button>
+          <button class="timer-btn timer-off-btn" data-mins="0">หยุด</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <header class="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="brand">
+        <span class="brand-icon">🌱</span>
+        <span class="brand-name">MindCare</span>
+      </a>
+
+      <nav class="nav-links">
+        <a href="#knowledge">ความรู้เรื่องโรคซึมเศร้า</a>
+        <a href="#causes">สาเหตุ</a>
+        <a href="#treatment">การรักษา</a>
+       
+        <a href="history.html" id="navHistoryLink" style="display: none; font-weight: 600; color: var(--primary);">📋 ประวัติของฉัน</a>
+      </nav>
+
+      <div class="nav-actions">
+        <div id="userNavBox" class="user-nav-box">
+          <a href="auth.html" id="authNavBtn" class="btn btn-outline btn-sm">เข้าสู่ระบบ</a>
+        </div>
+        <a href="https://1323alltime.camri.go.th/" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">ติดต่อ 1323</a>
+        <button class="menu-toggle" id="menuToggle" aria-label="เปิดเมนู">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero" id="about">
+    <div class="container">
+      <!-- Row 1: ซ้ายและขวาอยู่ในระนาบเดียวกัน -->
+      <div class="hero-container">
+        <div class="hero-content">
+          <div class="badge">🌿 พื้นที่ปลอดภัยเพื่อการเยียวยาใจ</div>
+          <h1 class="hero-title">ค้นพบความสงบ พลังใจ และความสุขในทุกๆ วัน</h1>
+          <p class="hero-desc">
+            การให้คำปรึกษาและบำบัดสุขภาพจิตโดยผู้เชี่ยวชาญ เข้าอกเข้าใจ และรักษาความลับสูงสุด ออกแบบเฉพาะเส้นทางการฟื้นฟูของคุณ เพื่อให้คุณก้าวผ่านทุกช่วงเวลาได้อย่างมั่นใจ
+          </p>
+          <div class="hero-cta">
+            <a href="assessment.html" class="btn btn-primary btn-lg">ทำแบบสอบถาม</a>
+            <a href="cheer.html" class="btn btn-outline btn-lg">🎈 ส่งต่อพลังใจ</a>
+          </div>
+          <div class="hero-trust">
+            <div class="avatar-group">
+              <span class="avatar">👩🏻</span>
+              <span class="avatar">👨🏽</span>
+              <span class="avatar">👩🏼</span>
+            </div>
+            <p>ได้รับความไว้วางใจจากผู้รับบริการกว่า <strong>1,200+ คน</strong></p>
+          </div>
+        </div>
+
+        <div class="hero-card-wrapper">
+          <div class="hero-visual-card">
+            <div class="status-chip">✨ นักจิตบำบัดและจิตวิทยาผู้เชี่ยวชาญ</div>
+            <h3>พร้อมรับฟังด้วยความเข้าใจ</h3>
+            <p>ให้บริการทั้งในรูปแบบปรึกษาออนไลน์ผ่านวิดีโอคอล และพบผู้เชี่ยวชาญโดยตรง สะดวกสบายทุกสัปดาห์</p>
+            <div class="metric-box">
+              <div class="metric">
+                <span class="num">98%</span>
+                <span class="label">ความพึงพอใจของผู้ใช้บริการ</span>
+              </div>
+              <div class="metric">
+                <span class="num">15+</span>
+                <span class="label">ปีแห่งประสบการณ์</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2: การ์ดเช็กอินอารมณ์แนวยาวด้านล่างเต็มแถว -->
+      <div class="mood-banner-card">
+        <div class="mood-banner-header">
+          <div class="status-chip">🌈 เช็กอินอารมณ์วันนี้</div>
+          <h3>วันนี้รู้สึกอย่างไรบ้าง?</h3>
+          <p>บันทึกความรู้สึกสั้น ๆ เพื่อสะท้อนสภาวะใจในแต่ละวันของคุณ</p>
+        </div>
+        <div class="mood-banner-body">
+          <div class="mood-selector">
+            <button class="mood-btn" data-score="1" data-label="มีความสุข">😄<span>สุขใจ</span></button>
+            <button class="mood-btn" data-score="2" data-label="ผ่อนคลาย">😌<span>สงบ</span></button>
+            <button class="mood-btn" data-score="3" data-label="เหนื่อยล้า">🥱<span>เหนื่อย</span></button>
+            <button class="mood-btn" data-score="4" data-label="กังวล">😰<span>กังวล</span></button>
+            <button class="mood-btn" data-score="5" data-label="เศร้า">😢<span>ดิ่งเศร้า</span></button>
+          </div>
+          <div class="mood-note-box">
+            <input type="text" id="moodNoteInput" placeholder="บันทึกข้อความสั้นๆ ถึงตัวเองในวันนี้..." maxlength="80">
+            <button id="saveMoodBtn" class="btn btn-primary btn-sm">บันทึก</button>
+          </div>
+          <p id="moodStatusText" class="mood-status"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 1: โรคซึมเศร้าคืออะไร (Knowledge) -->
+  <section class="section" id="knowledge">
+    <div class="container">
+      <div class="section-header">
+        <span class="sub-title">ทำความเข้าใจสุขภาพจิต</span>
+        <div style="display:flex; justify-content:center; align-items:center; gap:12px;">
+          <h2>โรคซึมเศร้าคืออะไร</h2>
+          <button class="bookmark-btn" data-key="art-knowledge" data-title="โรคซึมเศร้าคืออะไร" title="บันทึกบทความนี้">🔖</button>
+        </div>
+        <p>ข้อมูลทางการแพทย์จากคณะแพทยศาสตร์โรงพยาบาลรามาธิบดี มหาวิทยาลัยมหิดล</p>
+      </div>
+
+      <div class="article-box">
+        <div class="article-highlight">
+          <p>สำหรับคนส่วนใหญ่คำว่า "โรคซึมเศร้า" อาจฟังดูไม่คุ้นหู เรามักคิดว่าเป็นเพียงเรื่องของอารมณ์ความรู้สึกที่เกิดจากความผิดหวังหรือการสูญเสียในชีวิตประจำวัน แต่หากอารมณ์เศร้านั้น<strong>เป็นอยู่นานโดยไม่มีทีท่าว่าจะดีขึ้น หรือรุนแรงจนกระทบต่อกิจวัตรประจำวัน</strong> นั่นอาจเป็นสัญญาณของโรคที่ต้องได้รับการรักษา</p>
+        </div>
+
+        <div class="article-columns">
+          <div class="article-col">
+            <h3>คำว่า “โรค” บ่งบอกถึงอะไร?</h3>
+            <p>คำว่า “โรค” บ่งบอกว่าเป็นความผิดปกติทางการแพทย์ซึ่งจำเป็นต้องได้รับการดูแลรักษาเพื่อให้อาการทุเลา ต่างจากภาวะอารมณ์เศร้าธรรมดาที่เมื่อเหตุการณ์รอบตัวคลี่คลายหรือมีคนรับฟังก็สามารถหายได้</p>
+            <p>ผู้ที่ป่วยนอกจากมีอารมณ์ซึมเศร้าแล้ว การทำงานหรือกิจวัตรประจำวันจะแย่ลง เช่น ทำงานบ้านคั่งค้าง หรือขาดงานบ่อยครั้ง เปรียบเหมือนโรคทางกาย เช่น โรคหัวใจ ที่ทำให้สมรรถภาพของร่างกายลดลง</p>
+          </div>
+
+          <div class="article-col">
+            <h3>ไม่ใช่ความอ่อนแอ แต่คือ “ตัวโรค”</h3>
+            <p>การเป็นโรคซึมเศร้า<strong>ไม่ได้หมายความว่าผู้ป่วยเป็นคนอ่อนแอ คิดมาก หรือไม่สู้ปัญหา</strong> แต่เกิดขึ้นจากความเจ็บป่วยของตัวโรคเอง</p>
+            <p>หากได้รับการรักษาที่ถูกต้องและเหมาะสม ตัวโรคก็จะทุเลาลง และสามารถกลับมามีจิตใจแจ่มใส พร้อมดำเนินชีวิตและทำกิจวัตรต่างๆ ได้อย่างมีความสุขดังเดิม</p>
+          </div>
+        </div>
+
+        <div class="assessment-cta-card">
+          <div class="cta-info">
+            <span class="badge">แบบสอบถาม PHQ-9 (9Q)</span>
+            <h4>จะรู้ได้อย่างไรว่าเป็นโรคนี้หรือเปล่า?</h4>
+            <p>แบบสอบถามภาวะอารมณ์เศร้า (PHQ-9) ใช้ช่วยประเมินระดับความรุนแรงของอาการซึมเศร้าในแต่ละช่วงเวลา และติดตามผลการรักษาได้อย่างแม่นยำ</p>
+          </div>
+          <a href="assessment.html" class="btn btn-primary">เริ่มทำแบบสอบถามเลย</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 2: สาเหตุของโรคซึมเศร้า (Causes) -->
+  <section class="section bg-light" id="causes">
+    <div class="container">
+      <div class="section-header">
+        <span class="sub-title">ที่มาและปัจจัยกระตุ้น</span>
+        <div style="display:flex; justify-content:center; align-items:center; gap:12px;">
+          <h2>สาเหตุของโรคซึมเศร้า</h2>
+          <button class="bookmark-btn" data-key="art-causes" data-title="สาเหตุของโรคซึมเศร้า" title="บันทึกบทความนี้">🔖</button>
+        </div>
+        <p>โรคซึมเศร้าสัมพันธ์กับหลายปัจจัยร่วมกัน ไม่ได้เกิดจากสาเหตุใดสาเหตุหนึ่งเพียงอย่างเดียว</p>
+      </div>
+
+      <div class="grid cards-grid">
+        <div class="card">
+          <div class="card-icon">🧬</div>
+          <h3>1. ด้านกรรมพันธุ์</h3>
+          <p>พบว่ากรรมพันธุ์มีส่วนเกี่ยวข้องสูงในโรคซึมเศร้า โดยเฉพาะในกรณีของผู้ที่มีอาการเป็นซ้ำหลายๆ ครั้งในครอบครัว</p>
+        </div>
+
+        <div class="card">
+          <div class="card-icon">🧪</div>
+          <h3>2. สารเคมีในสมอง</h3>
+          <p>ระดับสารเคมีสำคัญอย่าง <strong>ซีโรโทนิน (Serotonin)</strong> และ <strong>นอร์เอพิเนฟริน (Norepinephrine)</strong> ลดต่ำลง รวมถึงความผิดปกติในการควบคุมประสานงานของเซลล์สื่อประสาท</p>
+        </div>
+
+        <div class="card">
+          <div class="card-icon">💭</div>
+          <h3>3. ลักษณะนิสัยและมุมมอง</h3>
+          <p>บุคคลที่มีแนวคิดมองตนเองในแง่ลบ มองเห็นแต่ข้อบกพร่อง หรือมองโลกในแง่ร้าย เมื่อเผชิญแรงกดดัน เช่น ตกงาน หรือการสูญเสีย จะมีโอกาสเกิดอาการซึมเศร้าได้ง่ายขึ้น</p>
+        </div>
+      </div>
+
+      <div class="note-box">
+        <strong>💡 ข้อคิดสำคัญ:</strong> โรคซึมเศร้ามักเกิดจากทั้ง <strong>ความเปราะบางภายในและปัจจัยกระตุ้นจากภายนอก</strong> เช่นเดียวกับการเป็นไข้หวัดที่เกิดจากร่างกายอ่อนแอร่วมกับเชื้อไวรัส
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 3: การรักษาและข้อควรรู้เรื่องยา (Treatment) -->
+  <section class="section" id="treatment">
+    <div class="container">
+      <div class="section-header">
+        <span class="sub-title">การฟื้นฟูและเยียวยา</span>
+        <div style="display:flex; justify-content:center; align-items:center; gap:12px;">
+          <h2>การรักษาและการใช้ยาแก้ซึมเศร้า</h2>
+          <button class="bookmark-btn" data-key="art-treatment" data-title="การรักษาและการใช้ยาแก้ซึมเศร้า" title="บันทึกบทความนี้">🔖</button>
+        </div>
+        <p>หากได้รับการรักษาอย่างถูกต้อง ผู้ป่วยโรคซึมเศร้าจะอาการดีขึ้นจนสามารถกลับมาใช้ชีวิตได้เป็นปกติ</p>
+      </div>
+
+      <div class="treatment-overview">
+        <div class="stat-highlight">
+          <span class="stat-big">8 ใน 10 คน</span>
+          <p>ของผู้ป่วยโรคซึมเศร้าที่ได้รับการรักษาด้วยยาอย่างถูกต้อง จะมีอาการดีขึ้นจนหายเป็นปกติ (เทียบกับผู้ที่ไม่ได้รับการรักษาที่หายเองได้เพียง 2-3 คนเท่านั้น)</p>
+        </div>
+
+        <div class="treatment-details">
+          <h3>ข้อควรทราบเกี่ยวกับการรักษาด้วยยาแก้ซึมเศร้า</h3>
+          <ol class="knowledge-list">
+            <li>
+              <strong>อาการไม่ได้หายทันทีที่เริ่มกินยา:</strong>
+              โดยทั่วไปมักใช้เวลาประมาณ 1-2 สัปดาห์ขึ้นไปจึงจะเห็นผลชัดเจน แต่ยาจะเริ่มช่วยให้การนอนหลับดีขึ้น เจริญอาหารขึ้น และลดความกระสับกระส่ายลงได้ในระยะแรก
+            </li>
+            <li>
+              <strong>ยาแก้ซึมเศร้าไม่ใช่ยาเสพติด:</strong>
+              ยาไม่มีฤทธิ์ทำให้ติดยา หากหยุดยาแล้วรู้สึกไม่สบาย มักเกิดจากตัวโรคยังไม่หายดี การกินๆ หยุดๆ หรือกินไม่ครบขนาดจะทำให้การรักษายากขึ้น
+            </li>
+            <li>
+              <strong>ควรรับประทานตามแพทย์สั่งอย่างเคร่งครัด:</strong>
+              ยาทุกชนิดอาจมีผลข้างเคียงได้ หากมีข้อสงสัยหรืออาการผิดปกติใดๆ ควรปรึกษาแพทย์ ไม่ควรปรับหรือหยุดยาด้วยตนเอง
+            </li>
+            <li>
+              <strong>ยากลุ่มที่นิยมใช้ในปัจจุบัน (SSRI):</strong>
+              เช่น ยา <em>Fluoxetine</em> และ <em>Sertraline</em> ซึ่งออกฤทธิ์ช่วยปรับสมดุลของสารซีโรโทนินในสมอง มีประสิทธิภาพดีและผลข้างเคียงน้อยกว่ายารุ่นเดิมมาก
+            </li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Services Section -->
+  <section class="section bg-light" id="services">
+    <div class="container">
+      <div class="section-header">
+        <span class="sub-title">ความเชี่ยวชาญของเรา</span>
+        <h2>การดูแลที่ออกแบบเฉพาะคุณ</h2>
+        <p>แนวทางการดูแลที่อ้างอิงตามหลักจิตวิทยา เพื่อช่วยคุณรับมือกับความเครียด ภาวะวิตกกังวล และการเปลี่ยนแปลงในชีวิต</p>
+      </div>
+
+      <div class="grid cards-grid">
+        <div class="card service-card">
+          <div class="card-icon">🧠</div>
+          <h3>การปรึกษารายบุคคล</h3>
+          <p>พูดคุยแบบตัวต่อตัวเพื่อจัดการกับความวิตกกังวล ภาวะซึมเศร้า ภาวะหมดไฟ (Burnout) และสร้างการเติบโตภายในใจในพื้นที่ปลอดภัย</p>
+          <a href="assessment.html" class="card-link">ทำแบบประเมินเบื้องต้น →</a>
+        </div>
+
+        <div class="card service-card">
+          <div class="card-icon">🤝</div>
+          <h3>การปรึกษาปัญหาชีวิตคู่</h3>
+          <p>สร้างความเข้าใจใหม่ เสริมสร้างการสื่อสารที่ดี และร่วมกันคลี่คลายปัญหาความขัดแย้งในความสัมพันธ์อย่างสร้างสรรค์</p>
+          <a href="assessment.html" class="card-link">ทำแบบประเมินเบื้องต้น →</a>
+        </div>
+
+        <div class="card service-card">
+          <div class="card-icon">🧘</div>
+          <h3>การฝึกสติและจัดการความเครียด</h3>
+          <p>เครื่องมือทางความคิดและการเจริญสติที่นำไปปรับใช้ได้จริง เพื่อฟื้นฟูความสงบ พัฒนาการนอนหลับ และรับมือกับความตื่นตระหนก</p>
+          <a href="assessment.html" class="card-link">ทำแบบประเมินเบื้องต้น →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Process Section -->
+  <section class="section" id="process">
+    <div class="container">
+      <div class="section-header">
+        <span class="sub-title">เรียบง่ายและเป็นระบบ</span>
+        <h2>ขั้นตอนการเข้ารับบริการ</h2>
+        <p>3 ขั้นตอนง่ายๆ เพื่อเริ่มต้นการเดินทางดูแลใจอย่างสบายใจและมั่นใจ</p>
+      </div>
+
+      <div class="grid steps-grid">
+        <div class="step-card">
+          <div class="step-num">01</div>
+          <h4>พูดคุยประเมินเบื้องต้น</h4>
+          <p>ทำแบบประเมินและพูดคุยกับทีมงานเพื่อบอกเล่าความต้องการและเป้าหมายของคุณ</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">02</div>
+          <h4>จับคู่กับผู้เชี่ยวชาญ</h4>
+          <p>เราเลือกจับคู่คุณกับนักจิตวิทยาหรือนักบำบัดที่เชี่ยวชาญและเหมาะสมกับประเด็นของคุณมากที่สุด</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">03</div>
+          <h4>เริ่มต้นกระบวนการเยียวยา</h4>
+          <p>เริ่มการปรึกษาทั้งแบบออนไลน์หรือที่คลินิก พร้อมการติดตามพัฒนาการและความคืบหน้าอย่างต่อเนื่อง</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Section -->
+  <section class="section bg-light" id="faq">
+    <div class="container container-sm">
+      <div class="section-header">
+        <span class="sub-title">ข้อสงสัยทั่วไป</span>
+        <h2>คำถามที่พบบ่อย</h2>
+      </div>
+
+      <div class="accordion">
+        <div class="accordion-item">
+          <button class="accordion-header">
+            <span>การปรึกษาออนไลน์มีการเก็บรักษาความลับอย่างไร?</span>
+            <span class="icon">+</span>
+          </button>
+          <div class="accordion-body">
+            <p>ทุกการปรึกษาเป็นความลับสูงสุดตามมาตรฐานจรรยาบรรณวิชาชีพ เราใช้แพลตฟอร์มที่เข้ารหัสความปลอดภัยระดับมาตรฐานสากล (End-to-End Encryption) เพื่อปกป้องข้อมูลส่วนตัวของคุณอย่างสมบูรณ์</p>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <button class="accordion-header">
+            <span>การปรึกษาแต่ละครั้งใช้เวลานานเท่าใด?</span>
+            <span class="icon">+</span>
+          </button>
+          <div class="accordion-body">
+            <p>สำหรับการให้คำปรึกษารายบุคคลมาตรฐานจะอยู่ที่ 50 นาทีต่อครั้ง ส่วนการปรึกษาปัญหาคู่รักหรือการประเมินรอบแรกอาจใช้เวลาประมาณ 75–80 นาที</p>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <button class="accordion-header">
+            <span>ยาแก้ซึมเศร้ากินแล้วจะติดยาหรือไม่?</span>
+            <span class="icon">+</span>
+          </button>
+          <div class="accordion-body">
+            <p>ยาแก้ซึมเศร้าไม่มีฤทธิ์เสพติดและไม่เกิดการติดยา อาการไม่สบายเมื่อหยุดยาเองมักเกิดจากการที่ตัวโรคยังไม่หายขาด ดังนั้นจึงควรรับประทานตามขนาดและระยะเวลาที่แพทย์แนะนำ</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Modal ฝึกหายใจ (Box Breathing) -->
+  <div id="breathingModal" class="modal-overlay">
+    <div class="modal-box">
+      <button class="modal-close" id="closeBreatheBtn">&times;</button>
+      <h3>ฝึกหายใจผ่อนคลาย (Box Breathing)</h3>
+      <p class="modal-desc">กำหนดลมหายใจช้าๆ 4 จังหวะ เพื่อลดความตึงเครียดของระบบประสาท</p>
+      
+      <div class="breathe-stage">
+        <div class="breathe-circle" id="breatheCircle">
+          <span id="breatheText">พร้อม</span>
+          <span id="breatheTimer">4</span>
+        </div>
+      </div>
+
+      <div class="breathe-actions">
+        <button id="startBreatheBtn" class="btn btn-primary">เริ่มฝึกหายใจ (1 นาที)</button>
+        <button id="stopBreatheBtn" class="btn btn-outline" style="display: none;">หยุดชั่วคราว</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container footer-container">
+      <div class="footer-brand">
+        <a href="index.html" class="brand">
+          <span class="brand-icon">🌱</span>
+          <span class="brand-name">MindCare</span>
+        </a>
+        <p>บริการดูแลสุขภาพจิตและการให้คำปรึกษาด้วยความอบอุ่น เข้าใจ และรักษาความลับ เพื่อความสบายใจของคุณ</p>
+      </div>
+      <div class="footer-links">
+        <div class="link-col">
+          <strong>เมนูหลัก</strong>
+          <a href="#knowledge">ความรู้โรคซึมเศร้า</a>
+          <a href="#causes">สาเหตุ</a>
+          <a href="#treatment">การรักษา</a>
+          <a href="cheer.html">ส่งต่อพลังใจ</a>
+          <a href="assessment.html">แบบประเมิน 9Q</a>
+        </div>
+        <div class="link-col">
+          <strong>หน่วยงานช่วยเหลือ</strong>
+          <a href="https://1323alltime.camri.go.th/" target="_blank" rel="noopener noreferrer">สายด่วนสุขภาพจิต 1323</a>
+          <a href="https://www.rama.mahidol.ac.th/ramamental/" target="_blank" rel="noopener noreferrer">รามาจิตเวช รามาธิบดี</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom container">
+      <p>© 2026 MindCare Wellness. ข้อมูลทางวิชาการอ้างอิงจากภาควิชาจิตเวชศาสตร์ คณะแพทยศาสตร์โรงพยาบาลรามาธิบดี มหาวิทยาลัยมหิดล</p>
+    </div>
+  </footer>
+
+  <script src="supabase-client.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

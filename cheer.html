@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MindCare — พื้นที่ส่งต่อพลังใจ (Cheer Space)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    /* สไตล์เฉพาะสำหรับท้องฟ้าลูกโป่ง */
+    .cheer-page-wrapper {
+      position: relative;
+      min-height: calc(100vh - 80px);
+      background: linear-gradient(180deg, #e8f5e9 0%, #f0fdf4 40%, #ffffff 100%);
+      overflow: hidden;
+      padding-bottom: 60px;
+    }
+
+    .cheer-sky {
+      position: relative;
+      width: 100%;
+      height: 480px;
+      overflow: hidden;
+      margin: 20px 0;
+      border-radius: var(--radius-lg);
+      background: linear-gradient(180deg, rgba(255,255,255,0.6) 0%, rgba(216,243,220,0.3) 100%);
+      border: 1.5px dashed rgba(45, 106, 79, 0.2);
+    }
+
+    /* ลูกโป่งคลีนๆ ไม่มีตัวหนังสือหรืออีโมจิ */
+    .balloon {
+      position: absolute;
+      width: 70px;
+      height: 85px;
+      border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
+      cursor: pointer;
+      box-shadow: inset -6px -6px 14px rgba(0,0,0,0.08), inset 4px 4px 8px rgba(255,255,255,0.6), 0 10px 22px rgba(0,0,0,0.12);
+      transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      user-select: none;
+      animation: floatUp 14s infinite linear;
+    }
+
+    /* แสงสะท้อนทรงกลมบนลูกโป่ง (Specular Highlight) */
+    .balloon::before {
+      content: '';
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      width: 14px;
+      height: 22px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.45);
+      transform: rotate(-25deg);
+    }
+
+    /* เชือกลูกโป่งและจุกผูก */
+    .balloon::after {
+      content: '';
+      position: absolute;
+      bottom: -18px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1.5px;
+      height: 18px;
+      background: rgba(0,0,0,0.22);
+    }
+
+    .balloon-knot {
+      position: absolute;
+      bottom: -4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 8px;
+      height: 5px;
+      background: inherit;
+      border-radius: 3px;
+    }
+
+    .balloon:hover {
+      transform: scale(1.15) !important;
+      filter: brightness(1.05);
+    }
+
+    /* สีลูกโป่งพาสเทล */
+    .balloon-green { background: radial-gradient(circle at 35% 35%, #d8f3dc, #74c69d); }
+    .balloon-pink  { background: radial-gradient(circle at 35% 35%, #ffe5ec, #ff8fa3); }
+    .balloon-yellow{ background: radial-gradient(circle at 35% 35%, #fefae0, #f4a261); }
+    .balloon-blue  { background: radial-gradient(circle at 35% 35%, #e0f2fe, #7dd3fc); }
+    .balloon-purple{ background: radial-gradient(circle at 35% 35%, #f3e8ff, #c084fc); }
+
+    /* อนิเมชันลูกโป่งแตก */
+    .balloon.popping {
+      animation: popBurst 0.4s forwards ease-out !important;
+    }
+
+    @keyframes popBurst {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.6); opacity: 0.8; filter: blur(3px); }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+
+    @keyframes floatUp {
+      0% {
+        bottom: -110px;
+        transform: translateX(0);
+      }
+      25% {
+        transform: translateX(18px) rotate(3deg);
+      }
+      50% {
+        transform: translateX(-16px) rotate(-3deg);
+      }
+      75% {
+        transform: translateX(14px) rotate(2deg);
+      }
+      100% {
+        bottom: 520px;
+        transform: translateX(0);
+      }
+    }
+
+    /* การ์ดฟอร์มส่งพลังใจ */
+    .cheer-form-card {
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      border: 1.5px solid var(--border-light);
+      box-shadow: var(--shadow-sm);
+      margin-top: 24px;
+    }
+
+    .color-picker-group {
+      display: flex;
+      gap: 12px;
+      margin: 10px 0 16px 0;
+    }
+
+    .color-choice {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: transform 0.2s;
+    }
+
+    .color-choice.selected {
+      border-color: var(--primary);
+      transform: scale(1.15);
+      box-shadow: 0 0 0 3px rgba(45, 106, 79, 0.2);
+    }
+
+    /* Modal แสดงข้อความเมื่อลูกโป่งแตก */
+    .pop-message-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(5px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .pop-message-modal.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .pop-card {
+      background: #ffffff;
+      border-radius: var(--radius-lg);
+      padding: 36px 32px;
+      max-width: 480px;
+      width: 90%;
+      text-align: center;
+      box-shadow: var(--shadow-lg);
+      transform: scale(0.9);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .pop-message-modal.show .pop-card {
+      transform: scale(1);
+    }
+
+    .pop-card-icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+      animation: bounce 0.6s ease;
+    }
+
+    .pop-sender-tag {
+      display: inline-block;
+      padding: 4px 14px;
+      background: var(--secondary);
+      color: var(--primary);
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+
+    .pop-message-content {
+      font-size: 1.2rem;
+      color: var(--text-main);
+      line-height: 1.6;
+      margin-bottom: 20px;
+      font-weight: 500;
+      word-break: break-word;
+    }
+
+    .pop-heal-quote {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      border-top: 1px dashed var(--border-light);
+      padding-top: 16px;
+      line-height: 1.6;
+      background: #f8faf8;
+      border-radius: var(--radius-sm);
+      padding: 12px;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+  </style>
+</head>
+<body class="assessment-body">
+
+  <!-- Navbar -->
+  <header class="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="brand">
+        <span class="brand-icon">🌱</span>
+        <span class="brand-name">MindCare</span>
+      </a>
+
+      <nav class="nav-links">
+       
+        <a href="history.html" id="navHistoryLink" style="display: none; font-weight: 600; color: var(--primary);">📋 ประวัติของฉัน</a>
+      </nav>
+
+      <div class="nav-actions">
+        <div id="userNavBox" class="user-nav-box">
+          <a href="auth.html" id="authNavBtn" class="btn btn-outline btn-sm">เข้าสู่ระบบ</a>
+        </div>
+        <a href="index.html" class="btn btn-outline btn-sm">← หน้าหลัก</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="cheer-page-wrapper">
+    <div class="container container-sm">
+      
+      <div class="section-header" style="margin-bottom: 24px; padding-top: 36px;">
+        <span class="sub-title">🎈 ท้องฟ้าแห่งความหวัง</span>
+        <h2 style="font-size: 2rem;">พื้นที่ส่งต่อพลังใจถึงกัน</h2>
+        <p>แตะที่ลูกโป่งเพื่อรับพลังใจ หรือส่งลูกโป่งของคุณขึ้นสู่ท้องฟ้าเพื่อฮีลใจเพื่อนๆ</p>
+      </div>
+
+      <!-- ท้องฟ้าปล่อยลูกโป่ง -->
+      <div class="cheer-sky" id="cheerSky"></div>
+      <p style="text-align: center; font-size: 0.85rem; color: var(--text-muted);">
+        💡 <em>แตะที่ลูกโป่งใบใดก็ได้เพื่อเปิดอ่านข้อความ</em>
+      </p>
+
+      <!-- ฟอร์มส่งลูกโป่งใหม่ -->
+      <div class="cheer-form-card">
+        <h3 style="margin-bottom: 8px; font-size: 1.25rem;">✨ ปล่อยลูกโป่งพลังใจของคุณ</h3>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
+          ข้อความของคุณจะลอยขึ้นไปบนท้องฟ้า และเปิดโอกาสให้ทุกคนได้แตะเพื่อรับกำลังใจ
+        </p>
+
+        <form id="cheerForm" onsubmit="return false;">
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label for="senderNameInput">ชื่อของคุณ (หรือนามแฝง)</label>
+            <input type="text" id="senderNameInput" class="form-control" placeholder="เช่น เพื่อนนิรนาม, คนชอบแมว, เฟิร์สน้ำไม่อาบ" maxlength="24" required>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label for="cheerMessageInput">ข้อความหรือคำให้กำลังใจ</label>
+            <textarea id="cheerMessageInput" class="form-control" rows="3" placeholder="พิมพ์ข้อความดีๆ หรือสิ่งที่คุณอยากบอกกับใครสักคนที่กำลังเหนื่อยล้า..." maxlength="150" required style="resize: none;"></textarea>
+          </div>
+
+          <label style="font-size: 0.9rem; font-weight: 600; color: var(--text-main);">เลือกสีลูกโป่งของคุณ</label>
+          <div class="color-picker-group">
+            <div class="color-choice selected" data-color="balloon-green" style="background: #74c69d;"></div>
+            <div class="color-choice" data-color="balloon-pink" style="background: #ff8fa3;"></div>
+            <div class="color-choice" data-color="balloon-yellow" style="background: #f4a261;"></div>
+            <div class="color-choice" data-color="balloon-blue" style="background: #7dd3fc;"></div>
+            <div class="color-choice" data-color="balloon-purple" style="background: #c084fc;"></div>
+          </div>
+
+          <div id="formNotice" class="auth-notice" style="display: none; margin-bottom: 14px;"></div>
+
+          <button type="button" id="submitCheerBtn" class="btn btn-primary btn-lg" style="width: 100%;">
+            🎈 ปล่อยลูกโป่งขึ้นสู่ท้องฟ้า
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Modal ปรากฏเมื่อจิ้มลูกโป่งแตก -->
+  <div id="popModal" class="pop-message-modal">
+    <div class="pop-card">
+      <div class="pop-card-icon">💌</div>
+      <span id="popSender" class="pop-sender-tag">จาก: เพื่อนร่วมทาง</span>
+      <div id="popMessage" class="pop-message-content">"..."</div>
+      <div class="pop-heal-quote">
+        🌱 <strong>เราหวังว่าการแชร์ความรู้สึกของเราจะช่วยให้ความกังวลในใจของคุณเบาลงได้นะคะ</strong>
+      </div>
+      <button id="closePopBtn" class="btn btn-outline btn-sm" style="margin-top: 20px;">
+        ปล่อยลูกโป่งกลับไปลอยต่อ ✨
+      </button>
+    </div>
+  </div>
+
+  <script src="supabase-client.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const cheerSky = document.getElementById('cheerSky');
+      const senderNameInput = document.getElementById('senderNameInput');
+      const cheerMessageInput = document.getElementById('cheerMessageInput');
+      const submitCheerBtn = document.getElementById('submitCheerBtn');
+      const formNotice = document.getElementById('formNotice');
+      const popModal = document.getElementById('popModal');
+      const popSender = document.getElementById('popSender');
+      const popMessage = document.getElementById('popMessage');
+      const closePopBtn = document.getElementById('closePopBtn');
+      const userNavBox = document.getElementById('userNavBox');
+      const navHistoryLink = document.getElementById('navHistoryLink');
+
+      let selectedColor = 'balloon-green';
+      let activePoppedBalloon = null;
+
+      // ตรวจสอบ User
+      if (window.supabaseClient) {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session && session.user) {
+          if (navHistoryLink) navHistoryLink.style.display = 'inline-block';
+          if (userNavBox) {
+            userNavBox.innerHTML = `
+              <span class="user-pill-badge">👤 ${session.user.email}</span>
+              <button id="logoutBtn" class="btn btn-outline btn-sm">ออกจากระบบ</button>
+            `;
+            document.getElementById('logoutBtn').addEventListener('click', async () => {
+              await supabaseClient.auth.signOut();
+              window.location.reload();
+            });
+          }
+        }
+      }
+
+      // เลือกสีลูกโป่ง
+      document.querySelectorAll('.color-choice').forEach(choice => {
+        choice.addEventListener('click', () => {
+          document.querySelectorAll('.color-choice').forEach(c => c.classList.remove('selected'));
+          choice.classList.add('selected');
+          selectedColor = choice.getAttribute('data-color');
+        });
+      });
+
+      // ดึงข้อความจาก Supabase
+      async function loadBalloons() {
+        const { data, error } = await supabaseClient
+          .from('cheer_messages')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        if (data && data.length > 0) {
+          cheerSky.innerHTML = '';
+          data.forEach((msg, idx) => {
+            createBalloonElement(msg, idx);
+          });
+        }
+      }
+
+      function createBalloonElement(msg, idx) {
+        const balloon = document.createElement('div');
+        balloon.className = `balloon ${msg.balloon_color || 'balloon-green'}`;
+        
+        // สุ่มตำแหน่งแนวนอนและระยะเวลาลอย
+        const leftPos = (idx * 18 + Math.random() * 8) % 85 + 4;
+        const animDuration = 10 + Math.random() * 8;
+        const animDelay = -(Math.random() * 14);
+
+        balloon.style.left = `${leftPos}%`;
+        balloon.style.animationDuration = `${animDuration}s`;
+        balloon.style.animationDelay = `${animDelay}s`;
+
+        // สร้างจุกผูกลูกโป่ง
+        const knot = document.createElement('div');
+        knot.className = 'balloon-knot';
+        balloon.appendChild(knot);
+
+        // เมื่อคลิกลูกโป่ง -> แตกและแสดงข้อความ
+        balloon.addEventListener('click', () => {
+          activePoppedBalloon = balloon;
+          balloon.classList.add('popping');
+
+          setTimeout(() => {
+            popSender.textContent = `จาก: ${msg.sender_name}`;
+            popMessage.textContent = `"${msg.message}"`;
+            popModal.classList.add('show');
+            balloon.style.visibility = 'hidden';
+          }, 350);
+        });
+
+        cheerSky.appendChild(balloon);
+      }
+
+      // ปิด Modal และให้ลูกโป่งกลับไปลอยต่อ
+      function closePop() {
+        popModal.classList.remove('show');
+        if (activePoppedBalloon) {
+          activePoppedBalloon.classList.remove('popping');
+          activePoppedBalloon.style.visibility = 'visible';
+          activePoppedBalloon.style.bottom = '-110px';
+          activePoppedBalloon = null;
+        }
+      }
+
+      closePopBtn.addEventListener('click', closePop);
+      popModal.addEventListener('click', (e) => {
+        if (e.target === popModal) closePop();
+      });
+
+      // ปล่อยลูกโป่งใหม่
+      submitCheerBtn.addEventListener('click', async () => {
+        const name = senderNameInput.value.trim();
+        const text = cheerMessageInput.value.trim();
+
+        if (!name || !text) {
+          formNotice.style.display = 'block';
+          formNotice.className = 'auth-notice error';
+          formNotice.textContent = 'กรุณากรอกทั้งชื่อและข้อความให้กำลังใจค่ะ';
+          return;
+        }
+
+        submitCheerBtn.disabled = true;
+        submitCheerBtn.textContent = 'กำลังปล่อยลูกโป่ง...';
+
+        const { error } = await supabaseClient
+          .from('cheer_messages')
+          .insert([{
+            sender_name: name,
+            message: text,
+            balloon_color: selectedColor
+          }]);
+
+        submitCheerBtn.disabled = false;
+        submitCheerBtn.textContent = '🎈 ปล่อยลูกโป่งขึ้นสู่ท้องฟ้า';
+
+        if (error) {
+          formNotice.style.display = 'block';
+          formNotice.className = 'auth-notice error';
+          formNotice.textContent = 'เกิดข้อผิดพลาด: ' + error.message;
+        } else {
+          formNotice.style.display = 'block';
+          formNotice.className = 'auth-notice success';
+          formNotice.textContent = '✨ ลูกโป่งของคุณลอยขึ้นสู่ท้องฟ้าเรียบร้อยแล้ว!';
+          cheerMessageInput.value = '';
+          await loadBalloons();
+          setTimeout(() => { formNotice.style.display = 'none'; }, 3000);
+        }
+      });
+
+      loadBalloons();
+    });
+  </script>
+</body>
+</html>

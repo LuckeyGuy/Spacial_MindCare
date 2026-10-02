@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MindCare — สถิติและประวัติสุขภาพใจ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Chart.js สำหรับกราฟแนวโน้ม -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- html2pdf.js Bundle สำหรับพิมพ์ PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    /* ปรับแต่งพื้นที่สำหรับบันทึกเป็น PDF ให้ชัดเจนและไม่ขาวว่างเปล่า */
+    #printableHistoryArea {
+      background: #ffffff !important;
+      color: #1e293b !important;
+      padding: 10px;
+      border-radius: 16px;
+    }
+  </style>
+</head>
+<body class="assessment-body">
+
+  <header class="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="brand">
+        <span class="brand-icon">🌱</span>
+        <span class="brand-name">MindCare</span>
+      </a>
+      <div class="nav-actions">
+        <a href="assessment.html" class="btn btn-primary btn-sm">ทำแบบสอบถามใหม่</a>
+        <a href="index.html" class="btn btn-outline btn-sm">← หน้าหลัก</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="assessment-wrapper">
+    <div class="container">
+      <div class="assessment-card history-page-card">
+        
+        <!-- กล่องคลุมข้อมูลทั้งหมดที่จะถูก Export เป็น PDF -->
+        <div id="printableHistoryArea">
+          <div class="section-header" style="margin-bottom: 24px; text-align: left;">
+            <span class="sub-title">แดชบอร์ดสุขภาพใจของคุณ</span>
+            <h2 style="font-size: 1.85rem; color: #0f172a;">แนวโน้มและประวัติการดูแลใจ</h2>
+            <p id="userEmailText" style="color: var(--text-muted);">กำลังโหลดข้อมูล...</p>
+            <p id="pdfExportDate" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;"></p>
+          </div>
+
+          <div id="notLoggedInBox" class="login-prompt-bar" style="display: none; text-align: center;">
+            <span>กรุณาเข้าสู่ระบบเพื่อเรียกดูสถิติและประวัติส่วนตัว</span>
+            <a href="auth.html">เข้าสู่ระบบที่นี่</a>
+          </div>
+
+          <!-- 1. กราฟติดตามแนวโน้มคะแนน 9Q -->
+          <div class="chart-wrapper-card" id="chartCard" style="display: none;">
+            <h3>📈 กราฟแนวโน้มคะแนนประเมิน 9Q</h3>
+            <p class="chart-sub">ติดตามการเปลี่ยนแปลงของระดับสภาวะใจตามช่วงเวลา</p>
+            <div style="position: relative; height: 260px; width: 100%;">
+              <canvas id="scoreChart"></canvas>
+            </div>
+          </div>
+
+          <div class="dashboard-grid">
+            <!-- 2. ประวัติการทำแบบทดสอบ 9Q -->
+            <div>
+              <h3 style="margin-bottom: 14px;">📋 ประวัติการทำแบบประเมิน (9Q)</h3>
+              <div id="historyListContainer" class="history-full-list">
+                <p style="color: var(--text-muted);">กำลังดึงข้อมูล...</p>
+              </div>
+            </div>
+
+            <!-- 3. บทความที่บุ๊กมาร์กไว้ & อารมณ์ล่าสุด -->
+            <div>
+              <h3 style="margin-bottom: 14px;">🔖 บทความที่บันทึกไว้</h3>
+              <div id="bookmarkListContainer" class="bookmark-list-box">
+                <p style="color: var(--text-muted);">กำลังโหลดรายการ...</p>
+              </div>
+
+              <h3 style="margin-top: 24px; margin-bottom: 14px;">🌈 บันทึกอารมณ์ล่าสุด</h3>
+              <div id="recentMoodsContainer" class="recent-moods-box">
+                <p style="color: var(--text-muted);">กำลังโหลดรายการ...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- แถบปุ่มด้านล่าง เพิ่มปุ่มดาวน์โหลดรายงาน PDF -->
+        <div style="margin-top: 36px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+          <a href="index.html" class="btn btn-outline btn-sm">← กลับหน้าหลัก</a>
+          
+          <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <button id="downloadHistoryPdfBtn" class="btn btn-primary btn-sm">📄 ดาวน์โหลดรายงาน PDF</button>
+            <a href="assessment.html" class="btn btn-outline btn-sm">ทำแบบทดสอบอีกครั้ง</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+
+  <script src="supabase-client.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const userEmailText = document.getElementById('userEmailText');
+      const pdfExportDate = document.getElementById('pdfExportDate');
+      const notLoggedInBox = document.getElementById('notLoggedInBox');
+      const historyListContainer = document.getElementById('historyListContainer');
+      const bookmarkListContainer = document.getElementById('bookmarkListContainer');
+      const recentMoodsContainer = document.getElementById('recentMoodsContainer');
+      const chartCard = document.getElementById('chartCard');
+      const downloadHistoryPdfBtn = document.getElementById('downloadHistoryPdfBtn');
+
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session || !session.user) {
+        userEmailText.textContent = "ยังไม่ได้เข้าสู่ระบบ";
+        notLoggedInBox.style.display = 'block';
+        historyListContainer.innerHTML = '';
+        bookmarkListContainer.innerHTML = '';
+        recentMoodsContainer.innerHTML = '';
+        if (downloadHistoryPdfBtn) downloadHistoryPdfBtn.style.display = 'none';
+        return;
+      }
+
+      const user = session.user;
+      userEmailText.textContent = `บัญชี: ${user.email}`;
+      const now = new Date();
+      pdfExportDate.textContent = `ข้อมูล ณ วันที่: ${now.toLocaleDateString('th-TH')} เวลา ${now.toLocaleTimeString('th-TH')}`;
+
+      // 1. โหลดประวัติ 9Q
+      const { data: scores } = await supabaseClient
+        .from('assessment_history')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (scores && scores.length > 0) {
+        chartCard.style.display = 'block';
+        renderChart(scores);
+
+        historyListContainer.innerHTML = '';
+        const reversedScores = [...scores].reverse();
+        reversedScores.forEach(item => {
+          const date = new Date(item.created_at).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' });
+          const card = document.createElement('div');
+          card.className = 'history-card-item';
+          card.innerHTML = `
+            <div class="history-item-left">
+              <span class="history-date-badge">📅 ${date}</span>
+              <div class="history-item-title">${item.result_title}</div>
+            </div>
+            <div class="history-item-score">
+              <span class="score-val">${item.total_score}</span>
+              <span class="score-unit">/ 27 คะแนน</span>
+            </div>
+          `;
+          historyListContainer.appendChild(card);
+        });
+      } else {
+        historyListContainer.innerHTML = '<p class="empty-state" style="color: var(--text-muted); padding: 16px 0;">ยังไม่มีประวัติการทำแบบทดสอบ</p>';
+      }
+
+      // 2. โหลดบทความที่ Bookmark
+      const { data: bookmarks } = await supabaseClient
+        .from('saved_articles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (bookmarks && bookmarks.length > 0) {
+        bookmarkListContainer.innerHTML = '';
+        bookmarks.forEach(b => {
+          const div = document.createElement('div');
+          div.className = 'bookmark-chip';
+          div.innerHTML = `
+            <span>📖 ${b.title}</span>
+            <button class="btn-del-bookmark" data-id="${b.id}">ลบ</button>
+          `;
+          bookmarkListContainer.appendChild(div);
+        });
+
+        document.querySelectorAll('.btn-del-bookmark').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const id = e.target.getAttribute('data-id');
+            await supabaseClient.from('saved_articles').delete().eq('id', id);
+            window.location.reload();
+          });
+        });
+      } else {
+        bookmarkListContainer.innerHTML = '<p class="empty-state" style="color: var(--text-muted); padding: 10px 0;">ยังไม่มีบทความที่บันทึกไว้</p>';
+      }
+
+      // 3. โหลดบันทึกอารมณ์รายวัน
+      const { data: moods } = await supabaseClient
+        .from('daily_moods')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(6);
+
+      if (moods && moods.length > 0) {
+        recentMoodsContainer.innerHTML = '';
+        moods.forEach(m => {
+          const d = new Date(m.created_at).toLocaleDateString('th-TH', { dateStyle: 'short' });
+          const p = document.createElement('div');
+          p.className = 'mood-entry-chip';
+          p.innerHTML = `<strong>${d}:</strong> ${m.mood_label} ${m.mood_note ? `— <em>"${m.mood_note}"</em>` : ''}`;
+          recentMoodsContainer.appendChild(p);
+        });
+      } else {
+        recentMoodsContainer.innerHTML = '<p class="empty-state" style="color: var(--text-muted); padding: 10px 0;">ยังไม่มีบันทึกอารมณ์</p>';
+      }
+
+      // ====================================================
+      // ฟังก์ชันดาวน์โหลดรายงานประวัติทั้งหมดเป็น PDF
+      // ====================================================
+      downloadHistoryPdfBtn.addEventListener('click', () => {
+        const element = document.getElementById('printableHistoryArea');
+        
+        // ซ่อนปุ่มลบในแท็บบทความชั่วคราวก่อนจับภาพ PDF
+        const delBtns = element.querySelectorAll('.btn-del-bookmark');
+        delBtns.forEach(b => b.style.display = 'none');
+
+        downloadHistoryPdfBtn.disabled = true;
+        downloadHistoryPdfBtn.textContent = '⏳ กำลังสร้างรายงาน PDF...';
+
+        const opt = {
+          margin: [10, 10, 10, 10],
+          filename: `MindCare-History-${new Date().toISOString().slice(0,10)}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            scrollY: 0,
+            backgroundColor: '#ffffff'
+          },
+          jsPDF: {
+            unit: 'mm',
+            format: 'a4',
+            orientation: 'portrait'
+          }
+        };
+
+        html2pdf().set(opt).from(element).save().then(() => {
+          delBtns.forEach(b => b.style.display = 'inline-block');
+          downloadHistoryPdfBtn.disabled = false;
+          downloadHistoryPdfBtn.textContent = '📄 ดาวน์โหลดรายงาน PDF';
+        }).catch(err => {
+          console.error('PDF generation error:', err);
+          delBtns.forEach(b => b.style.display = 'inline-block');
+          downloadHistoryPdfBtn.disabled = false;
+          downloadHistoryPdfBtn.textContent = '📄 ดาวน์โหลดรายงาน PDF';
+          alert('เกิดข้อผิดพลาดในการสร้าง PDF กรุณาลองใหม่อีกครั้ง');
+        });
+      });
+    });
+
+    function renderChart(dataList) {
+      const labels = dataList.map(item => new Date(item.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }));
+      const points = dataList.map(item => item.total_score);
+
+      const ctx = document.getElementById('scoreChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'คะแนนแบบประเมิน 9Q',
+            data: points,
+            borderColor: '#2d6a4f',
+            backgroundColor: 'rgba(45, 106, 79, 0.12)',
+            fill: true,
+            tension: 0.35,
+            pointRadius: 5,
+            pointBackgroundColor: '#2d6a4f'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { min: 0, max: 27, ticks: { stepSize: 5 } }
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>

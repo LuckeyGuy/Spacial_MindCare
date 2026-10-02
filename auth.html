@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MindCare — เข้าสู่ระบบ / สมัครสมาชิก</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="assessment-body">
+
+  <header class="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="brand">
+        <span class="brand-icon">🌱</span>
+        <span class="brand-name">MindCare</span>
+      </a>
+      <a href="index.html" class="btn btn-outline btn-sm">← กลับหน้าหลัก</a>
+    </div>
+  </header>
+
+  <main class="assessment-wrapper">
+    <div class="container container-sm">
+      <div class="assessment-card auth-card">
+        <div class="section-header" style="margin-bottom: 28px;">
+          <span class="sub-title">ระบบสมาชิก MindCare</span>
+          <h2 id="authHeading">เข้าสู่ระบบ</h2>
+          <p>เข้าสู่ระบบเพื่อบันทึกและติดตามแนวโน้มสุขภาพใจของคุณ</p>
+        </div>
+
+        <form id="authForm" class="auth-form" onsubmit="return false;">
+          <div class="form-group">
+            <label for="emailInput">อีเมล</label>
+            <input type="email" id="emailInput" class="form-control" placeholder="example@email.com" required>
+          </div>
+
+          <div class="form-group">
+            <label for="passwordInput">รหัสผ่าน</label>
+            <input type="password" id="passwordInput" class="form-control" placeholder="รหัสผ่านอย่างน้อย 6 ตัวอักษร" required>
+          </div>
+
+          <div id="authNotice" class="auth-notice" style="display: none;"></div>
+
+          <div class="auth-btn-stack">
+            <button type="button" id="submitLoginBtn" class="btn btn-primary btn-lg" style="width: 100%;">เข้าสู่ระบบ</button>
+            <button type="button" id="submitSignUpBtn" class="btn btn-outline btn-lg" style="width: 100%;">สมัครสมาชิกใหม่</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <script src="supabase-client.js"></script>
+  <script src="auth.js"></script>
+</body>
+</html>

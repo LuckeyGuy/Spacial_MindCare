@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MindCare — แบบประเมินสุขภาพใจ (9Q)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- html2pdf.js Bundle -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    /* สไตล์ปรับความชัดเจนให้กับกล่องสรุปผลพิมพ์ */
+    #printableResultArea {
+      background: #ffffff !important;
+      color: #1e293b !important;
+      padding: 20px;
+      border-radius: 16px;
+    }
+  </style>
+</head>
+<body class="assessment-body">
+
+  <!-- Navbar -->
+  <header class="navbar">
+    <div class="container nav-container">
+      <a href="index.html" class="brand">
+        <span class="brand-icon">🌱</span>
+        <span class="brand-name">MindCare</span>
+      </a>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <span id="navUserBadge" class="user-pill-badge" style="display: none;"></span>
+        <a href="history.html" id="navHistoryBtn" class="btn btn-outline btn-sm" style="display: none;">ประวัติของฉัน</a>
+        <a href="index.html" class="btn btn-outline btn-sm">← กลับหน้าหลัก</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="assessment-wrapper">
+    <div class="container container-sm">
+      
+      <!-- แจ้งเตือนสถานะการบันทึกข้อมูล -->
+      <div id="loginPromptBar" class="login-prompt-bar" style="display: none;">
+        <span>💡 คุณกำลังทำแบบสอบถามในฐานะผู้เยี่ยมชม </span>
+        <a href="auth.html">เข้าสู่ระบบเพื่อบันทึกประวัติของคุณ</a>
+      </div>
+
+      <!-- Quiz Card (ทำคำถามทีละข้อ) -->
+      <div class="assessment-card" id="quizCard">
+        
+        <!-- Progress Bar -->
+        <div class="quiz-header">
+          <div class="step-indicator">
+            <span>คำถามข้อที่ <strong id="currentStepNum">1</strong> จาก 9</span>
+            <span id="percentText">11%</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill" style="width: 11%;"></div>
+          </div>
+        </div>
+
+        <!-- Question Box -->
+        <div class="question-box">
+          <span class="badge" id="badgeStep">ข้อที่ 1</span>
+          <h2 id="questionTitle" class="question-text">เบื่อ ทำอะไร ๆ ก็ไม่เพลิดเพลิน</h2>
+          <p class="question-subtitle">ในช่วง 2 สัปดาห์ที่ผ่านมารวมถึงวันนี้ ท่านมีความรู้สึกเช่นนี้บ่อยเพียงใด?</p>
+        </div>
+
+        <!-- Rating Options -->
+        <div class="options-group" id="optionsContainer">
+          <button class="option-btn" data-value="0">
+            <span class="opt-score">1</span>
+            <span class="opt-desc">ไม่มีเลย</span>
+          </button>
+          <button class="option-btn" data-value="1">
+            <span class="opt-score">2</span>
+            <span class="opt-desc">เป็นบางวัน (1-7 วัน)</span>
+          </button>
+          <button class="option-btn" data-value="2">
+            <span class="opt-score">3</span>
+            <span class="opt-desc">เป็นบ่อย (> 7 วัน)</span>
+          </button>
+          <button class="option-btn" data-value="3">
+            <span class="opt-score">4</span>
+            <span class="opt-desc">เป็นทุกวัน</span>
+          </button>
+        </div>
+
+        <div class="quiz-actions">
+          <button class="btn btn-outline" id="prevBtn" style="display: none;">← ย้อนกลับ</button>
+          <span class="hint-text">*คลิกเลือกตัวเลือกเพื่อไปยังข้อถัดไป</span>
+        </div>
+
+      </div>
+
+      <!-- Result Screen -->
+      <div class="assessment-card result-card" id="resultCard" style="display: none;">
+        
+        <!-- กล่องที่จะถูกเซฟเป็น PDF -->
+        <div id="printableResultArea">
+          <div class="result-header">
+            <div class="result-icon-badge" id="resultIcon">🌱</div>
+            <h2 style="color: #0f172a; margin-bottom: 6px;">ผลการประเมินสุขภาพใจ MindCare</h2>
+            <p style="color: #64748b; font-size: 0.95rem;">แบบประเมินคัดกรองภาวะซึมเศร้า (9Q) — กรมสุขภาพจิต</p>
+            <p id="pdfMetaDate" style="font-size:0.85rem; color:#64748b; margin-top:4px;"></p>
+          </div>
+
+          <div class="score-display-box" style="margin: 20px auto; background: #f8faf8; border: 1.5px dashed #2d6a4f;">
+            <span class="score-title" style="color: #64748b;">คะแนนรวมของคุณ</span>
+            <span class="score-number" id="totalScore" style="color: #2d6a4f;">0</span>
+            <span class="score-total" style="color: #64748b;">/ 27 คะแนน</span>
+          </div>
+
+          <div class="result-status-box" id="resultStatusBox" style="margin-bottom: 20px;">
+            <h3 id="resultTitle">ระดับความเสี่ยง</h3>
+            <p id="resultDesc">คำอธิบายรายละเอียดระดับความเสี่ยง</p>
+          </div>
+
+          <div class="result-advice" id="resultAdvice" style="margin-bottom: 20px; border: 1px solid #e2e8f0;"></div>
+
+          <div class="crisis-notice" id="q9Alert" style="display: none; margin-bottom: 16px;">
+            ⚠️ <strong>ข้อความสำคัญ:</strong> เนื่องจากท่านมีสัญญาณความคิดทำร้ายตนเอง กรุณาติดต่อสายด่วนสุขภาพจิต <strong>1323</strong> (โทรฟรี 24 ชม.) หรือปรึกษาผู้เชี่ยวชาญ/คนใกล้ชิดทันที
+          </div>
+        </div>
+
+        <p id="dbStatusNotice" class="db-status-notice"></p>
+
+        <!-- แสดงประวัติการทำแบบทดสอบ -->
+        <div id="historyContainer" class="history-container" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 10px; margin-bottom: 16px;">
+            <h3 style="margin: 0; border: none; padding: 0;">ประวัติการประเมินของคุณที่ผ่านมา</h3>
+            <a href="history.html" class="btn btn-outline btn-sm">ดูแดชบอร์ดกราฟ →</a>
+          </div>
+          <ul id="historyList" class="history-list"></ul>
+        </div>
+
+        <div class="result-actions" style="margin-top: 32px; flex-wrap: wrap;">
+          <button id="downloadPdfBtn" class="btn btn-primary btn-lg">📄 ดาวน์โหลดรายงาน PDF</button>
+          <a href="index.html" class="btn btn-outline btn-lg">กลับสู่หน้าแรก</a>
+          <button class="btn btn-outline btn-lg" id="retryBtn">ทำแบบประเมินอีกครั้ง</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script src="supabase-client.js"></script>
+  <script>
+    const questions = [
+      { id: 1, text: "เบื่อ ทำอะไร ๆ ก็ไม่เพลิดเพลิน" },
+      { id: 2, text: "ไม่สบายใจ ซึมเศร้า หรือท้อแท้" },
+      { id: 3, text: "เหนื่อยง่าย หรือไม่ค่อยมีแรง" },
+      { id: 4, text: "เบื่ออาหาร หรือกินมากเกินไป" },
+      { id: 5, text: "รู้สึกไม่ดีกับตัวเอง คิดว่าตัวเองล้มเหลว หรือเป็นคนทำให้ตัวเองหรือครอบครัวผิดหวัง" },
+      { id: 6, text: "สมาธิไม่ดีเวลาทำอะไร เช่น ดูโทรทัศน์ ฟังวิทยุ หรือทำงานที่ต้องใช้ความตั้งใจ" },
+      { id: 7, text: "หลับยาก หรือหลับ ๆ ตื่น ๆ หรือหลับมากไป" },
+      { id: 8, text: "พูดหรือทำอะไรช้าจนคนอื่นมองเห็น หรือกระสับกระส่ายจนท่านอยู่ไม่นิ่งเหมือนเคย" },
+      { id: 9, text: "คิดทำร้ายตนเอง หรือคิดว่าถ้าตาย ๆ ไปเสียคงจะดี" }
+    ];
+
+    let currentStep = 0;
+    const answers = new Array(questions.length).fill(null);
+    let currentUser = null;
+
+    const quizCard = document.getElementById('quizCard');
+    const resultCard = document.getElementById('resultCard');
+    const currentStepNum = document.getElementById('currentStepNum');
+    const percentText = document.getElementById('percentText');
+    const progressFill = document.getElementById('progressFill');
+    const badgeStep = document.getElementById('badgeStep');
+    const questionTitle = document.getElementById('questionTitle');
+    const prevBtn = document.getElementById('prevBtn');
+    const optionBtns = document.querySelectorAll('.option-btn');
+    const retryBtn = document.getElementById('retryBtn');
+    const loginPromptBar = document.getElementById('loginPromptBar');
+    const navUserBadge = document.getElementById('navUserBadge');
+    const navHistoryBtn = document.getElementById('navHistoryBtn');
+    const dbStatusNotice = document.getElementById('dbStatusNotice');
+    const historyContainer = document.getElementById('historyContainer');
+    const historyList = document.getElementById('historyList');
+    const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session && session.user) {
+        currentUser = session.user;
+        navUserBadge.style.display = 'inline-block';
+        navUserBadge.textContent = `👤 ${currentUser.email}`;
+        if (navHistoryBtn) navHistoryBtn.style.display = 'inline-flex';
+        loginPromptBar.style.display = 'none';
+      } else {
+        loginPromptBar.style.display = 'block';
+      }
+    });
+
+    function renderQuestion() {
+      const q = questions[currentStep];
+      currentStepNum.textContent = currentStep + 1;
+      badgeStep.textContent = `ข้อที่ ${currentStep + 1}`;
+      questionTitle.textContent = q.text;
+
+      const progress = Math.round(((currentStep + 1) / questions.length) * 100);
+      progressFill.style.width = `${progress}%`;
+      percentText.textContent = `${progress}%`;
+
+      prevBtn.style.display = currentStep > 0 ? 'inline-flex' : 'none';
+
+      optionBtns.forEach(btn => {
+        const val = parseInt(btn.getAttribute('data-value'));
+        if (answers[currentStep] === val) {
+          btn.classList.add('selected');
+        } else {
+          btn.classList.remove('selected');
+        }
+      });
+    }
+
+    optionBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = parseInt(btn.getAttribute('data-value'));
+        answers[currentStep] = val;
+
+        setTimeout(() => {
+          if (currentStep < questions.length - 1) {
+            currentStep++;
+            renderQuestion();
+          } else {
+            showResult();
+          }
+        }, 160);
+      });
+    });
+
+    prevBtn.addEventListener('click', () => {
+      if (currentStep > 0) {
+        currentStep--;
+        renderQuestion();
+      }
+    });
+
+    async function showResult() {
+      quizCard.style.display = 'none';
+      resultCard.style.display = 'block';
+
+      const total = answers.reduce((sum, val) => sum + (val || 0), 0);
+      document.getElementById('totalScore').textContent = total;
+      
+      const now = new Date();
+      document.getElementById('pdfMetaDate').textContent = `วันที่ประเมิน: ${now.toLocaleDateString('th-TH')} เวลา ${now.toLocaleTimeString('th-TH')}`;
+
+      const resultTitle = document.getElementById('resultTitle');
+      const resultDesc = document.getElementById('resultDesc');
+      const resultAdvice = document.getElementById('resultAdvice');
+      const resultIcon = document.getElementById('resultIcon');
+      const statusBox = document.getElementById('resultStatusBox');
+      const q9Alert = document.getElementById('q9Alert');
+
+      let calculatedTitle = "";
+
+      if (total < 7) {
+        resultIcon.textContent = "😊";
+        statusBox.className = "result-status-box status-safe";
+        calculatedTitle = "ไม่มีภาวะซึมเศร้า หรือมีความเสี่ยงน้อยมาก";
+        resultTitle.textContent = calculatedTitle;
+        resultDesc.textContent = "ท่านมีภาวะอารมณ์และจิตใจในเกณฑ์ปกติ สามารถจัดการกับความเครียดและชีวิตประจำวันได้ดี";
+        resultAdvice.innerHTML = `
+          <h4 style="margin-bottom:8px; color:#0f172a;">คำแนะนำเบื้องต้น:</h4>
+          <ul>
+            <li>รักษาวิถีชีวิตที่สมดุล พักผ่อนให้เพียงพอ และรับประทานอาหารที่มีประโยชน์</li>
+            <li>ออกกำลังกายสม่ำเสมอและทำกิจกรรมที่ชื่นชอบเพื่อผ่อนคลายจิตใจ</li>
+            <li>สามารถกลับมาทำแบบประเมินซ้ำได้เมื่อรู้สึกมีความเครียดสะสม</li>
+          </ul>
+        `;
+      } else if (total <= 12) {
+        resultIcon.textContent = "🌱";
+        statusBox.className = "result-status-box status-mild";
+        calculatedTitle = "มีภาวะซึมเศร้า ระดับน้อย (Mild)";
+        resultTitle.textContent = calculatedTitle;
+        resultDesc.textContent = "ท่านเริ่มมีสัญญาณของความเหนื่อยล้าทางอารมณ์ หรือความเครียดที่ส่งผลกระทบต่อจิตใจบ้าง";
+        resultAdvice.innerHTML = `
+          <h4 style="margin-bottom:8px; color:#0f172a;">คำแนะนำเบื้องต้น:</h4>
+          <ul>
+            <li>พูดคุยระบายความรู้สึกกับเพื่อนสนิทหรือคนในครอบครัวที่ไว้วางใจ</li>
+            <li>ฝึกเทคนิคการผ่อนคลาย เช่น กำหนดลมหายใจ หรือฟังเพลงสบายๆ</li>
+            <li>สังเกตอารมณ์ของตนเอง หากอาการไม่ดีขึ้นใน 1-2 สัปดาห์ แนะนำให้ปรึกษาผู้เชี่ยวชาญ</li>
+          </ul>
+        `;
+      } else if (total <= 18) {
+        resultIcon.textContent = "🌤️";
+        statusBox.className = "result-status-box status-moderate";
+        calculatedTitle = "มีภาวะซึมเศร้า ระดับปานกลาง (Moderate)";
+        resultTitle.textContent = calculatedTitle;
+        resultDesc.textContent = "อารมณ์และสภาวะจิตใจเริ่มส่งผลกระทบต่อการทำงาน การเรียน หรือการใช้ชีวิตประจำวัน";
+        resultAdvice.innerHTML = `
+          <h4 style="margin-bottom:8px; color:#0f172a;">คำแนะนำเบื้องต้น:</h4>
+          <ul>
+            <li>แนะนำให้เข้าพบหรือปรึกษานักจิตวิทยาหรือนักจิตบำบัดเพื่อรับคำแนะนำอย่างเป็นระบบ</li>
+            <li>จัดลำดับความสำคัญของงาน ลดภาระความกดดันลงชั่วคราว</li>
+            <li>ทีมงาน MindCare พร้อมเป็นพื้นที่รับฟังและร่วมหาทางออกให้กับท่าน</li>
+          </ul>
+        `;
+      } else {
+        resultIcon.textContent = "💙";
+        statusBox.className = "result-status-box status-severe";
+        calculatedTitle = "มีภาวะซึมเศร้า ระดับรุนแรง (Severe)";
+        resultTitle.textContent = calculatedTitle;
+        resultDesc.textContent = "สภาวะทางอารมณ์ต้องการการดูแลและประเมินอย่างใกล้ชิดจากแพทย์ผู้เชี่ยวชาญ";
+        resultAdvice.innerHTML = `
+          <h4 style="margin-bottom:8px; color:#0f172a;">คำแนะนำเร่งด่วน:</h4>
+          <ul>
+            <li>แนะนำให้เข้าพบจิตแพทย์ที่สถานพยาบาลหรือโรงพยาบาลใกล้บ้านโดยเร็ว</li>
+            <li>ไม่ควรอยู่คนเดียวในช่วงเวลาที่รู้สึกท่วมท้น ให้บอกคนใกล้ชิดเพื่อรับการดูแล</li>
+            <li>สายด่วนสุขภาพจิต กรมสุขภาพจิต: <strong>1323</strong> (โทรฟรีตลอด 24 ชั่วโมง)</li>
+          </ul>
+        `;
+      }
+
+      if (answers[8] > 0) {
+        q9Alert.style.display = 'block';
+      } else {
+        q9Alert.style.display = 'none';
+      }
+
+      await saveScoreToDatabase(total, calculatedTitle);
+    }
+
+    async function saveScoreToDatabase(score, title) {
+      if (!currentUser) {
+        dbStatusNotice.innerHTML = `ℹ️ ข้อมูลไม่ได้ถูกบันทึก <a href="auth.html">เข้าสู่ระบบ</a> เพื่อเก็บสถิติผลประเมินของคุณ`;
+        return;
+      }
+
+      dbStatusNotice.textContent = "⏳ กำลังบันทึกผลการประเมินลงบัญชีของคุณ...";
+
+      const { data, error } = await supabaseClient
+        .from('assessment_history')
+        .insert([
+          {
+            user_id: currentUser.id,
+            total_score: score,
+            result_title: title
+          }
+        ]);
+
+      if (error) {
+        dbStatusNotice.textContent = "⚠️ ไม่สามารถบันทึกข้อมูลได้: " + error.message;
+      } else {
+        dbStatusNotice.textContent = "✅ บันทึกผลการประเมินลงในฐานข้อมูลเรียบร้อยแล้ว";
+        await loadUserHistory();
+      }
+    }
+
+    async function loadUserHistory() {
+      if (!currentUser) return;
+
+      const { data, error } = await supabaseClient
+        .from('assessment_history')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (data && data.length > 0) {
+        historyContainer.style.display = 'block';
+        historyList.innerHTML = '';
+        data.forEach(item => {
+          const date = new Date(item.created_at).toLocaleString('th-TH', {
+            dateStyle: 'medium',
+            timeStyle: 'short'
+          });
+          const li = document.createElement('li');
+          li.className = 'history-item';
+          li.innerHTML = `
+            <div class="history-date">${date}</div>
+            <div class="history-detail">
+              <strong>${item.total_score} คะแนน</strong> — ${item.result_title}
+            </div>
+          `;
+          historyList.appendChild(li);
+        });
+      }
+    }
+
+    // ====================================================
+    // ฟังก์ชันดาวน์โหลด PDF (แก้ปัญหาหน้าว่างเปล่า 100%)
+    // ====================================================
+    downloadPdfBtn.addEventListener('click', () => {
+      const element = document.getElementById('printableResultArea');
+      
+      downloadPdfBtn.disabled = true;
+      downloadPdfBtn.textContent = '⏳ กำลังสร้างเอกสาร PDF...';
+
+      const opt = {
+        margin: [10, 10, 10, 10],
+        filename: `MindCare-Report-${new Date().toISOString().slice(0,10)}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          scrollY: 0,
+          backgroundColor: '#ffffff'
+        },
+        jsPDF: {
+          unit: 'mm',
+          format: 'a4',
+          orientation: 'portrait'
+        }
+      };
+
+      html2pdf().set(opt).from(element).save().then(() => {
+        downloadPdfBtn.disabled = false;
+        downloadPdfBtn.textContent = '📄 ดาวน์โหลดรายงาน PDF';
+      }).catch(err => {
+        console.error('PDF generation error:', err);
+        downloadPdfBtn.disabled = false;
+        downloadPdfBtn.textContent = '📄 ดาวน์โหลดรายงาน PDF';
+        alert('เกิดข้อผิดพลาดในการสร้าง PDF กรุณาลองใหม่อีกครั้ง');
+      });
+    });
+
+    retryBtn.addEventListener('click', () => {
+      answers.fill(null);
+      currentStep = 0;
+      resultCard.style.display = 'none';
+      quizCard.style.display = 'block';
+      dbStatusNotice.textContent = "";
+      renderQuestion();
+    });
+
+    renderQuestion();
+  </script>
+</body>
+</html>
